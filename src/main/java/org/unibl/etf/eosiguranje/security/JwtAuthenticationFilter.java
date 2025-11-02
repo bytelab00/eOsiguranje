@@ -1,6 +1,7 @@
 package org.unibl.etf.eosiguranje.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.unibl.etf.eosiguranje.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +17,7 @@ import org.unibl.etf.eosiguranje.security.JwtUtil;
 
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -38,17 +40,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = null;
         String username = null;
 
-        if(authHeader != null && authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             username = jwtUtil.extractUsername(token);
         }
 
-        if(username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var userOpt = userService.findByUsername(username);
-            if(userOpt.isPresent() && jwtUtil.validateToken(token)) {
+            if (userOpt.isPresent() && jwtUtil.validateToken(token)) {
+                var user = userOpt.get();
+
+                // Assign authorities based on user's role
+                var authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + user.getRole()) // e.g., ROLE_ADMIN
+                );
+
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                                userOpt.get(), null, null);
+                                user, null, authorities);
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
@@ -56,4 +65,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
 }

@@ -86,27 +86,36 @@ public class AuthController {
     @PostMapping("/login/verify")
     @Transactional
     public ResponseEntity<?> loginStep2(@RequestBody TwoFaRequest request) {
-        var now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         var twoFaOpt = user2FARepository
                 .findByIdAndUsedFalseAndExpiresAtAfter(request.getUser2FAId(), now);
 
         if (twoFaOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("invalid or expired");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "invalid_or_expired_2fa"));
         }
 
         var twoFa = twoFaOpt.get();
         String submitted = request.getCode() == null ? "" : request.getCode().trim();
 
         if (!twoFa.getCode().equals(submitted)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("invalid or expired");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "invalid_or_expired_2fa"));
         }
 
         twoFa.setUsed(true);
         user2FARepository.save(twoFa);
 
-        // TODO: issue JWT and return success payload
-        return ResponseEntity.ok("ok");
+        // ISSUE JWT using username + role
+        String token = jwtUtil.generateToken(twoFa.getUser().getUsername(), twoFa.getUser().getRole());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "login_success",
+                "token", token
+        ));
     }
+
+
 
 }
 
