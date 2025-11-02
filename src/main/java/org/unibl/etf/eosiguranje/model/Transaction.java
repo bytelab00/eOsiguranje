@@ -2,35 +2,59 @@ package org.unibl.etf.eosiguranje.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "transactions")
-@Data
+@Getter
+@Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Transaction {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name="user_id", nullable=false)
-    private User user;
+    @Column(nullable = false)
+    private Long userId;
 
     @Column(nullable = false)
+    private Long policyId;
+
+    @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
-    @Column(nullable = false)
-    private String provider; // Stripe, PayPal
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "stripe_payment_intent_id")
+    private String stripePaymentIntentId;
+
+    @Column(name = "provider")
+    private String provider;
+
+    @Column(name = "provider_id", nullable = false)
+    private Long providerId;
 
     @Column(nullable = false)
-    private String providerId; // id from payment gateway
+    private String status; // Add this field
 
-    @Column(nullable = false)
-    private String status; // SUCCESS, FAILED, PENDING
-
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (provider == null) {
+            provider = "stripe";
+        }
+        if (providerId == null) {
+            providerId = 1L;
+        }
+        if (status == null) {
+            status = "pending"; // Default status when creating a transaction
+        }
+    }
 }

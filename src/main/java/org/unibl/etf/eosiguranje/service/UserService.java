@@ -1,7 +1,9 @@
 
 package org.unibl.etf.eosiguranje.service;
 
+import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.unibl.etf.eosiguranje.model.User;
 import org.unibl.etf.eosiguranje.repository.UserRepository;
@@ -28,5 +30,16 @@ public class UserService {
 
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    public String getUsernameFromToken(String token) {
+        return Jwts.parser()
+                .setSigningKey(jwtSecret)
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
     }
 }
