@@ -1,3 +1,4 @@
+
 package org.unibl.etf.eosiguranje.service;
 
 import org.springframework.mail.SimpleMailMessage;
@@ -16,9 +17,18 @@ public class MailService {
     public void sendTestEmail(String to) {
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setTo(to);
-        msg.setFrom("no-reply@insurance.local"); // optional
+        msg.setFrom("no-reply@insurance.local");
         msg.setSubject("Test - Mailtrap");
         msg.setText("Mailtrap configuration working.");
+        mailSender.send(msg);
+    }
+
+    public void sendEmail(String to, String message) {
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setTo(to);
+        msg.setFrom("no-reply@insurance.local");
+        msg.setSubject("2FA Code");
+        msg.setText(message);
         mailSender.send(msg);
     }
 }
