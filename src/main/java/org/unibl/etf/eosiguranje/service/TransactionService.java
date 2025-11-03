@@ -15,9 +15,10 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    public Transaction saveTransaction(Long userId, Long policyId, BigDecimal amount, String paymentIntentId) {
+    public Transaction saveTransaction(Long userId, String username, Long policyId, BigDecimal amount, String paymentIntentId) {
         Transaction transaction = Transaction.builder()
                 .userId(userId)
+                .username(username)
                 .policyId(policyId)
                 .amount(amount)
                 .stripePaymentIntentId(paymentIntentId)

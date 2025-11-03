@@ -24,6 +24,10 @@ public class Transaction {
     @Column(nullable = false)
     private Long policyId;
 
+    @Column(nullable = false)
+    private String username; // Add this field
+
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 

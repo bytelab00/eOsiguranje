@@ -1,26 +1,26 @@
 package org.unibl.etf.eosiguranje.controller;
 
-import com.stripe.model.PaymentIntent;
-import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.Stripe;
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.model.Event;
+import com.stripe.model.checkout.Session;
+import com.stripe.net.Webhook;
+import com.stripe.param.checkout.SessionCreateParams;
 import lombok.RequiredArgsConstructor;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.unibl.etf.eosiguranje.model.Policy;
 import org.unibl.etf.eosiguranje.model.Transaction;
+import org.unibl.etf.eosiguranje.model.User;
 import org.unibl.etf.eosiguranje.service.PolicyService;
 import org.unibl.etf.eosiguranje.service.TransactionService;
+import org.unibl.etf.eosiguranje.service.UserPolicyService;
 import org.unibl.etf.eosiguranje.service.UserService;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Base64;
 import java.util.Map;
-// TODO: Stripe in frontend.
+
 @RestController
 @RequestMapping("/api/purchase")
 @RequiredArgsConstructor
@@ -29,101 +29,89 @@ public class PurchaseController {
     private final PolicyService policyService;
     private final TransactionService transactionService;
     private final UserService userService;
+    private final UserPolicyService userPolicyService;
 
-    // Step 1: Create PaymentIntent
-    @PostMapping("/intent")
-    public ResponseEntity<?> createPaymentIntent(@RequestParam Long policyId,
-                                                 @RequestHeader("Authorization") String authHeader) throws Exception {
-        String username = userService.getUsernameFromToken(authHeader.substring(7));
-        Long userId = userService.findByUsername(username).get().getId();
+    @Value("${stripe.webhook.secret}")
+    private String webhookSecret;
 
-        Policy policy = policyService.findById(policyId).orElseThrow(() -> new RuntimeException("Policy not found"));
+    @Value("${stripe.success.url}")
+    private String successUrl;
 
-        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-                .setAmount(policy.getPrice().multiply(BigDecimal.valueOf(100)).longValue())
-                .setCurrency("usd")
-                .build();
+    @Value("${stripe.cancel.url}")
+    private String cancelUrl;
 
-        PaymentIntent intent = PaymentIntent.create(params);
-
-        transactionService.saveTransaction(userId, policyId, BigDecimal.valueOf(policy.getPrice().doubleValue()), intent.getId());
-
-        return ResponseEntity.ok(Map.of(
-                "clientSecret", intent.getClientSecret()
-        ));
-
-    }
-
-    // Step 2: Confirmed payment → generate PDF and return receipt
-
-    @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody Map<String, String> payload,
-                                            @RequestHeader("Authorization") String authHeader) throws IOException {
+    @PostMapping("/create-checkout-session")
+    public ResponseEntity<?> createCheckoutSession(
+            @RequestParam Long policyId,
+            @RequestHeader("Authorization") String authHeader) {
         try {
-            String paymentIntentId = payload.get("paymentIntentId");
-            if (paymentIntentId == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "paymentIntentId is required"));
-            }
-
-            // Extract the payment intent ID from the client secret
-            paymentIntentId = paymentIntentId.split("_secret_")[0];
-
             String username = userService.getUsernameFromToken(authHeader.substring(7));
             Long userId = userService.findByUsername(username).get().getId();
 
-            Transaction tx = transactionService.findByPaymentIntentId(paymentIntentId)
-                    .orElseThrow(() -> new RuntimeException("Transaction not found"));
-
-            // Update transaction status to completed
-            tx = transactionService.updateTransactionStatus(tx, "completed");
-
-            Policy policy = policyService.findById(tx.getPolicyId())
+            Policy policy = policyService.findById(policyId)
                     .orElseThrow(() -> new RuntimeException("Policy not found"));
 
-            byte[] pdfBytes = generatePdfReceipt(tx, policy, username);
-            String pdfBase64 = Base64.getEncoder().encodeToString(pdfBytes);
+            SessionCreateParams params = SessionCreateParams.builder()
+                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                    .setSuccessUrl(successUrl)
+                    .setCancelUrl(cancelUrl)
+                    .addLineItem(SessionCreateParams.LineItem.builder()
+                            .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("usd")
+                                    .setUnitAmount(policy.getPrice().multiply(new BigDecimal(100)).longValue())
+                                    .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                            .setName(policy.getName())
+                                            .build())
+                                    .build())
+                            .setQuantity(1L)
+                            .build())
+                    .putMetadata("policy_id", policyId.toString())
+                    .putMetadata("user_id", userId.toString())
+                    .putMetadata("username", username) // Add username to metadata
+                    .build();
+
+            Session session = Session.create(params);
+
+            // Save initial transaction with username
+            transactionService.saveTransaction(userId, username, policyId, policy.getPrice(), session.getId());
 
             return ResponseEntity.ok(Map.of(
-                    "message", "payment_success",
-                    "pdfBase64", pdfBase64
+                    "checkoutUrl", session.getUrl()
             ));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    private byte[] generatePdfReceipt(Transaction tx, Policy policy, String username) throws IOException {
-        try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
-            document.addPage(page);
+    @PostMapping("/webhook")
+    public ResponseEntity<String> handleWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+        try {
+            Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
 
-            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
-                content.beginText();
-                content.setFont(PDType1Font.HELVETICA_BOLD, 16);
-                content.setLeading(20f);
-                content.newLineAtOffset(50, 700);
+            if ("checkout.session.completed".equals(event.getType())) {
+                Session session = (Session) event.getDataObjectDeserializer().getObject().get();
 
-                content.showText("Insurance Policy Purchase Receipt");
-                content.newLine();
-                content.newLine();
-                content.setFont(PDType1Font.HELVETICA, 12);
-                content.showText("Username: " + username);
-                content.newLine();
-                content.showText("Policy: " + policy.getName());
-                content.newLine();
-                content.showText("Amount Paid: $" + policy.getPrice());
-                content.newLine();
-                content.showText("Transaction ID: " + tx.getId());
-                content.newLine();
-                content.showText("Thank you for your purchase!");
+                Transaction tx = transactionService.findByPaymentIntentId(session.getId())
+                        .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-                content.endText();
+                transactionService.updateTransactionStatus(tx, "completed");
+
+                User user = userService.findByUsername(tx.getUsername())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+                Policy policy = policyService.findById(tx.getPolicyId())
+                        .orElseThrow(() -> new RuntimeException("Policy not found"));
+
+                userPolicyService.createUserPolicy(user, policy, null);
             }
 
-            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                document.save(baos);
-                return baos.toByteArray();
-            }
+            return ResponseEntity.ok().build();
+        } catch (SignatureVerificationException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
         }
     }
 }
