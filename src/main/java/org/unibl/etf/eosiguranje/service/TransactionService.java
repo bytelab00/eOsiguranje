@@ -39,4 +39,9 @@ public class TransactionService {
         transaction.setStatus(status);
         return transactionRepository.save(transaction);
     }
+
+    public void update(Transaction tx) {
+        transactionRepository.save(tx);
+    }
+
 }

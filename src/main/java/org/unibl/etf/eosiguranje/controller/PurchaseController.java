@@ -73,7 +73,12 @@ public class PurchaseController {
             Session session = Session.create(params);
 
             // Save initial transaction with username
-            transactionService.saveTransaction(userId, username, policyId, policy.getPrice(), session.getId());
+            //transactionService.saveTransaction(userId, username, policyId, policy.getPrice(), session.getId());
+
+            // Save and mark transaction as completed immediately
+            Transaction tx = transactionService.saveTransaction(userId, username, policyId, policy.getPrice(), session.getId());
+            tx.setStatus("completed");
+            transactionService.update(tx);
 
             return ResponseEntity.ok(Map.of(
                     "checkoutUrl", session.getUrl()
@@ -89,29 +94,55 @@ public class PurchaseController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String sigHeader) {
         try {
+            System.out.println("Webhook received - Signature: " + sigHeader);
             Event event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+            System.out.println("Event type received: " + event.getType());
 
             if ("checkout.session.completed".equals(event.getType())) {
-                Session session = (Session) event.getDataObjectDeserializer().getObject().get();
+                System.out.println("Processing checkout.session.completed event");
 
-                Transaction tx = transactionService.findByPaymentIntentId(session.getId())
-                        .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                // Safely deserialize
+                var deserialized = event.getDataObjectDeserializer();
+                if (deserialized.getObject().isEmpty()) {
+                    System.err.println("No object found in webhook event.");
+                    return ResponseEntity.ok("No object found");
+                }
+
+                Session session = (Session) deserialized.getObject().get();
+                System.out.println("Session ID: " + session.getId());
+                System.out.println("PaymentIntent ID: " + session.getPaymentIntent());
+
+                String paymentIntentId = session.getPaymentIntent();
+                if (paymentIntentId == null) {
+                    System.err.println("Session missing paymentIntent");
+                    return ResponseEntity.ok("Missing paymentIntent");
+                }
+
+                Transaction tx = transactionService.findByPaymentIntentId(paymentIntentId)
+                        .orElseThrow(() -> new RuntimeException("Transaction not found for " + paymentIntentId));
 
                 transactionService.updateTransactionStatus(tx, "completed");
+                System.out.println("Transaction marked as completed");
 
                 User user = userService.findByUsername(tx.getUsername())
                         .orElseThrow(() -> new RuntimeException("User not found"));
+
                 Policy policy = policyService.findById(tx.getPolicyId())
                         .orElseThrow(() -> new RuntimeException("Policy not found"));
 
                 userPolicyService.createUserPolicy(user, policy, null);
+                System.out.println("User policy created successfully");
             }
 
             return ResponseEntity.ok().build();
         } catch (SignatureVerificationException e) {
+            System.err.println("Webhook signature verification failed: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
+            System.err.println("Webhook processing failed: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }
+
 }
