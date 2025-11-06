@@ -10,6 +10,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/policies")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class PolicyController {
 
     private final PolicyService policyService;

@@ -21,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/purchase")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class PurchaseController {
 
     private final PolicyService policyService;
