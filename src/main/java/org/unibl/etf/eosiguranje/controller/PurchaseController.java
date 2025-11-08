@@ -83,9 +83,11 @@ public class PurchaseController {
 
             // Generate PDF and email
             User user = userService.findByUsername(username).get();
+            // TODO: Uncomment Email sending (limit almost reached)
+            /*
             byte[] pdf = pdfService.generateReceipt(user, policy, tx);
             mailService.sendReceipt(user.getEmail(), pdf);
-
+*/
             return ResponseEntity.ok(Map.of(
                     "checkoutUrl", session.getUrl()
             ));

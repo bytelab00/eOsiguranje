@@ -75,7 +75,9 @@ public class AuthController {
                 .build();
         user2FA = user2FARepository.save(user2FA);
 
-        mailService.sendEmail(user.getEmail(), "Your 2FA code: " + code);
+        // TODO: uncomment sendEmail2, for 2fa, limit reached
+       // mailService.sendEmail(user.getEmail(), "Your 2FA code: " + code);
+        System.out.println("2FA code sent to: " + code);
 
         // return the id so client can call verify with it
         return ResponseEntity.ok(Map.of(

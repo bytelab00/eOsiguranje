@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface SecurityEventRepository extends JpaRepository<SecurityEvent, Long> {
     List<SecurityEvent> findByUserId(Long userId);
+
+
 }
