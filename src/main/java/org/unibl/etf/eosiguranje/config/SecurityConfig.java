@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.unibl.etf.eosiguranje.filter.AccessControlFilter;
 import org.unibl.etf.eosiguranje.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -14,10 +15,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AccessControlFilter accessControlFilter;
 
     @Autowired
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          AccessControlFilter accessControlFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.accessControlFilter = accessControlFilter;
     }
 
     @Bean
@@ -32,7 +36,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/purchase/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // First check JWT token
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Then check for suspicious purchase access
+                .addFilterAfter(accessControlFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

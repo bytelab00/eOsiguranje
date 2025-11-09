@@ -5,6 +5,7 @@ import org.unibl.etf.eosiguranje.repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,5 +28,11 @@ public class PolicyService {
 
     public void deleteById(Long id) {
         policyRepository.deleteById(id);
+    }
+
+    public BigDecimal getExpectedPrice(long policyId) {
+        return policyRepository.findById(policyId)
+                .map(Policy::getPrice)
+                .orElseThrow(() -> new RuntimeException("Policy not found with ID: " + policyId));
     }
 }

@@ -13,10 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.unibl.etf.eosiguranje.model.Policy;
 import org.unibl.etf.eosiguranje.model.Transaction;
 import org.unibl.etf.eosiguranje.model.User;
-import org.unibl.etf.eosiguranje.service.PolicyService;
-import org.unibl.etf.eosiguranje.service.TransactionService;
-import org.unibl.etf.eosiguranje.service.UserPolicyService;
-import org.unibl.etf.eosiguranje.service.UserService;
+import org.unibl.etf.eosiguranje.service.*;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -24,12 +21,16 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/purchase")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class PurchaseController {
 
     private final PolicyService policyService;
     private final TransactionService transactionService;
     private final UserService userService;
     private final UserPolicyService userPolicyService;
+    private final PdfService pdfService;
+    private final MailService mailService;
+
 
     @Value("${stripe.webhook.secret}")
     private String webhookSecret;
@@ -80,6 +81,13 @@ public class PurchaseController {
             tx.setStatus("completed");
             transactionService.update(tx);
 
+            // Generate PDF and email
+            User user = userService.findByUsername(username).get();
+            // TODO: Uncomment Email sending (limit almost reached)
+            /*
+            byte[] pdf = pdfService.generateReceipt(user, policy, tx);
+            mailService.sendReceipt(user.getEmail(), pdf);
+*/
             return ResponseEntity.ok(Map.of(
                     "checkoutUrl", session.getUrl()
             ));
