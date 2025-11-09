@@ -9,4 +9,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByStripePaymentIntentId(String stripePaymentIntentId);
 
     //List<Transaction> findByUserId(Long userId);
+    //Optional<Transaction> findByUserId(Long userId);
 }
