@@ -113,6 +113,7 @@ public class AuthController {
         securityEventService.logEvent(user, "2FA_SENT",
                 String.format("2FA code sent to user from IP: %s", ipAddress), 0);
 
+        // TODO: Send mail
         // mailService.sendEmail(user.getEmail(), "Your 2FA code: " + code);
         System.out.println("2FA code: " + code);
 
