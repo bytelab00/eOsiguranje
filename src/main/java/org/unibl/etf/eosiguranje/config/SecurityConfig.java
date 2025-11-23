@@ -42,6 +42,8 @@ public class SecurityConfig {
 
                         // Stripe/PayPal webhook (public)
                         .requestMatchers("/api/purchase/webhook").permitAll()
+                        .requestMatchers("/api/purchase/success").permitAll()  // ADD THIS
+                        .requestMatchers("/api/purchase/cancel").permitAll()
 
                         // authenticated purchase flow
                         .requestMatchers("/api/purchase/**").authenticated()
