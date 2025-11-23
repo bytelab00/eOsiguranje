@@ -42,6 +42,55 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
+
+            try {
+                username = jwtUtil.extractUsername(token);
+
+                // Only accept access tokens for API requests
+                if (!jwtUtil.isAccessToken(token)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+            } catch (Exception e) {
+                // Invalid token
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            var userOpt = userService.findByUsername(username);
+            if (userOpt.isPresent() && jwtUtil.validateToken(token)) {
+                var user = userOpt.get();
+
+                var authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + user.getRole())
+                );
+
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                user, null, authorities);
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+
+    /*
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        String username = null;
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
             username = jwtUtil.extractUsername(token);
         }
 
