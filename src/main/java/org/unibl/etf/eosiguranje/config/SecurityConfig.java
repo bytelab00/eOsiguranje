@@ -38,7 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // public policy browsing
-                        .requestMatchers("/api/policies/**").permitAll()
+                        .requestMatchers("/api/policies/**").authenticated()
 
                         // Stripe/PayPal webhook (public)
                         .requestMatchers("/api/purchase/webhook").permitAll()
