@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.unibl.etf.eosiguranje.security.JwtUtil;
 
-
 import java.io.IOException;
 import java.util.List;
 
@@ -36,23 +35,60 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
+        // Skip JWT validation for public endpoints
+        String path = request.getRequestURI();
+        if (path.startsWith("/api/auth/") ||
+                path.equals("/api/purchase/webhook") ||
+                path.equals("/api/purchase/success") ||
+                path.equals("/api/purchase/cancel")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authHeader = request.getHeader("Authorization");
         String token = null;
         String username = null;
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-            username = jwtUtil.extractUsername(token);
+
+            try {
+                // Extract username and validate token type
+                username = jwtUtil.extractUsername(token);
+
+                // Only accept access tokens for API requests
+                if (!jwtUtil.isAccessToken(token)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Invalid token type\"}");
+                    return;
+                }
+
+                // Validate token (checks expiration too)
+                if (!jwtUtil.validateToken(token)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":\"Token expired or invalid\"}");
+                    return;
+                }
+
+            } catch (Exception e) {
+                // Invalid token format
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Invalid token\"}");
+                return;
+            }
         }
 
+        // Set authentication if valid token and user exists
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             var userOpt = userService.findByUsername(username);
-            if (userOpt.isPresent() && jwtUtil.validateToken(token)) {
+            if (userOpt.isPresent()) {
                 var user = userOpt.get();
 
-                // Assign authorities based on user's role
                 var authorities = List.of(
-                        new SimpleGrantedAuthority("ROLE_" + user.getRole()) // e.g., ROLE_ADMIN
+                        new SimpleGrantedAuthority("ROLE_" + user.getRole())
                 );
 
                 UsernamePasswordAuthenticationToken authToken =
@@ -65,45 +101,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
-
-    /*
-    * @Override
-protected void doFilterInternal(HttpServletRequest request,
-                                HttpServletResponse response,
-                                FilterChain filterChain) throws ServletException, IOException {
-
-    String path = request.getRequestURI();
-    if (path.startsWith("/api/auth/")) {  // skip authentication for auth endpoints
-        filterChain.doFilter(request, response);
-        return;
-    }
-
-    String authHeader = request.getHeader("Authorization");
-    String token = null;
-    String username = null;
-
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-        token = authHeader.substring(7);
-        username = jwtUtil.extractUsername(token);
-    }
-
-    if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-        var userOpt = userService.findByUsername(username);
-        if (userOpt.isPresent() && jwtUtil.validateToken(token)) {
-            var user = userOpt.get();
-            var authorities = List.of(
-                    new SimpleGrantedAuthority("ROLE_" + user.getRole())
-            );
-
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(user, null, authorities);
-            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authToken);
-        }
-    }
-
-    filterChain.doFilter(request, response);
-}
-*/
-
 }

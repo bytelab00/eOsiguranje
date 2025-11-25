@@ -2,6 +2,7 @@ package org.unibl.etf.eosiguranje.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -9,9 +10,12 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString(exclude = {"twoFactorAuth", "purchases"}) // Dodaj ovo
+@EqualsAndHashCode(exclude = {"twoFactorAuth", "purchases"}) // I ovo za equals/hashCode
 public class User {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false)
@@ -21,11 +25,15 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String password; // hashed
+    private String password;
 
     @Column(nullable = false)
-    private String role; // e.g., CLIENT, ADMIN
+    private String role;
 
     @Column(nullable = false)
     private Boolean enabled = true;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<User2FA> twoFactorAuth;
+
 }

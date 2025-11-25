@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.unibl.etf.eosiguranje.filter.AccessControlFilter;
@@ -29,16 +30,33 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // auth endpoints
+                        .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // admin zone
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/policies/**").permitAll()
+
+                        // public policy browsing
+                        .requestMatchers("/api/policies/**").authenticated()
+
+                        // Stripe/PayPal webhook (public)
                         .requestMatchers("/api/purchase/webhook").permitAll()
+                        .requestMatchers("/api/purchase/success").permitAll()  // ADD THIS
+                        .requestMatchers("/api/purchase/cancel").permitAll()
+
+                        // authenticated purchase flow
                         .requestMatchers("/api/purchase/**").authenticated()
+
+                        // everything else
                         .anyRequest().authenticated()
                 )
-                // First check JWT token
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // JWT FIRST
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                // Then check for suspicious purchase access
+                // Business-rules filter AFTER JWT
                 .addFilterAfter(accessControlFilter, JwtAuthenticationFilter.class);
 
         return http.build();
