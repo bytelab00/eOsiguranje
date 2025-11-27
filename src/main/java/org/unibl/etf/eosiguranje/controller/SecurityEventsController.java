@@ -22,9 +22,7 @@ public class SecurityEventsController {
     private final SecurityEventRepository securityEventRepository;
     private final UserService userService;
 
-    /**
-     * Get all security events (admin only)
-     */
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<SecurityEvent>> getAllEvents(
@@ -39,9 +37,7 @@ public class SecurityEventsController {
         return ResponseEntity.ok(events);
     }
 
-    /**
-     * Get events by action type
-     */
+
     @GetMapping("/by-action")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<SecurityEvent>> getEventsByAction(
@@ -50,9 +46,7 @@ public class SecurityEventsController {
         return ResponseEntity.ok(events);
     }
 
-    /**
-     * Get high-risk events
-     */
+
     @GetMapping("/high-risk")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<SecurityEvent>> getHighRiskEvents(
@@ -61,9 +55,7 @@ public class SecurityEventsController {
         return ResponseEntity.ok(events);
     }
 
-    /**
-     * Get recent events within specified hours
-     */
+
     @GetMapping("/recent")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<SecurityEvent>> getRecentEvents(
@@ -73,9 +65,7 @@ public class SecurityEventsController {
         return ResponseEntity.ok(events);
     }
 
-    /**
-     * Get events for current user
-     */
+
     @GetMapping("/my-events")
     public ResponseEntity<List<SecurityEvent>> getMyEvents(
             @RequestHeader("Authorization") String authHeader) {
@@ -91,9 +81,7 @@ public class SecurityEventsController {
         }
     }
 
-    /**
-     * Get security statistics
-     */
+
     @GetMapping("/statistics")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getStatistics(
@@ -137,9 +125,7 @@ public class SecurityEventsController {
         }
     }
 
-    /**
-     * Get event details by ID
-     */
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SecurityEvent> getEventById(@PathVariable Long id) {

@@ -39,9 +39,7 @@ public class AuthController {
     private final SecurityEventRepository securityEventRepository;
     private AuthenticationManager authenticationManager;
 
-    // --------------------------------------------------------------------
-    // REGISTER
-    // --------------------------------------------------------------------
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req, HttpServletRequest request) {
         String ipAddress = getClientIP(request);
@@ -73,9 +71,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "user_registered"));
     }
 
-    // --------------------------------------------------------------------
-    // LOGIN STEP 1 (password check + send 2FA)
-    // --------------------------------------------------------------------
+
     @PostMapping("/login")
     public ResponseEntity<?> loginStep1(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         String ipAddress = getClientIP(request);
@@ -109,12 +105,12 @@ public class AuthController {
                 .build();
         user2FA = user2FARepository.save(user2FA);
 
-        // Log 2FA code sent
+
         securityEventService.logEvent(user, "2FA_SENT",
                 String.format("2FA code sent to user from IP: %s", ipAddress), 0);
 
-        // TODO: Send mail
-        // mailService.sendEmail(user.getEmail(), "Your 2FA code: " + code);
+
+        mailService.sendEmail(user.getEmail(), "Your 2FA code: " + code);
         System.out.println("2FA code: " + code);
 
         return ResponseEntity.ok(Map.of(
@@ -123,9 +119,7 @@ public class AuthController {
         ));
     }
 
-    // --------------------------------------------------------------------
-    // LOGIN STEP 2 (verify 2FA + issue ACCESS + REFRESH tokens)
-    // --------------------------------------------------------------------
+
     @PostMapping("/login/verify")
     @Transactional
     public ResponseEntity<?> verify2FA(@RequestBody TwoFaRequest request, HttpServletRequest httpRequest) {
@@ -201,9 +195,7 @@ public class AuthController {
         }
     }
 
-    // --------------------------------------------------------------------
-    // REFRESH TOKEN
-    // --------------------------------------------------------------------
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody RefreshTokenRequest request, HttpServletRequest httpRequest) {
         try {
@@ -248,13 +240,7 @@ public class AuthController {
         }
     }
 
-    // --------------------------------------------------------------------
-    // HELPER METHODS
-    // --------------------------------------------------------------------
 
-    /**
-     * Extract client IP address from request
-     */
     private String getClientIP(HttpServletRequest request) {
         String xfHeader = request.getHeader("X-Forwarded-For");
         if (xfHeader == null) {
@@ -263,9 +249,7 @@ public class AuthController {
         return xfHeader.split(",")[0];
     }
 
-    /**
-     * Check for suspicious login activity (multiple failed attempts)
-     */
+
     private void checkForSuspiciousLoginActivity(String username) {
         try {
             LocalDateTime since = LocalDateTime.now().minusMinutes(15);

@@ -67,7 +67,6 @@ public class PurchaseController {
             // Create user policy
             userPolicyService.createUserPolicy(user, policy, null);
 
-            // ✅ LOG SUCCESSFUL PURCHASE HERE
             securityEventService.logPurchase(user, policyId,
                     policy.getPrice().toString(), session_id);
 
@@ -94,14 +93,14 @@ public class PurchaseController {
 
                 User user = userService.findByUsername(username).orElse(null);
 
-                // Find and mark transaction as cancelled
+
                 Transaction tx = transactionService.findByPaymentIntentId(session_id).orElse(null);
                 if (tx != null) {
                     tx.setStatus("cancelled");
                     transactionService.update(tx);
                 }
 
-                // ✅ LOG CANCELLED PURCHASE HERE
+
                 if (user != null) {
                     securityEventService.logFailedPurchase(user, policyId, "User cancelled payment");
                 }
@@ -168,11 +167,10 @@ public class PurchaseController {
                             policyId, policy.getPrice().toString(), session.getId()), 0);
 
             // Generate PDF and email
-            // TODO: Uncomment Email sending (limit almost reached)
-            /*
+
             byte[] pdf = pdfService.generateReceipt(user, policy, tx);
             mailService.sendReceipt(user.getEmail(), pdf);
-            */
+
 
             // Log successful purchase
             //securityEventService.logPurchase(user, policyId,
@@ -270,17 +268,11 @@ public class PurchaseController {
         }
     }
 
-    /**
-     * Check for suspicious purchase activity
-     */
+
     private void checkSuspiciousPurchaseActivity(User user, Policy policy) {
         try {
-            // Check for multiple purchases in short time
             LocalDateTime since = LocalDateTime.now().minusMinutes(5);
-            // You'll need to implement this in your transaction service
-            // Long recentPurchases = transactionService.countRecentPurchasesByUser(user.getId(), since);
 
-            // Example: If user tries to buy the same expensive policy multiple times rapidly
             if (policy.getPrice().compareTo(new BigDecimal("1000")) > 0) {
                 securityEventService.logEvent(user, "HIGH_VALUE_PURCHASE",
                         String.format("High-value purchase attempt - PolicyID: %d, Amount: %s",

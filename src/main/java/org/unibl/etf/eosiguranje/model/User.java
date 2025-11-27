@@ -1,5 +1,7 @@
 package org.unibl.etf.eosiguranje.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
@@ -10,8 +12,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"twoFactorAuth", "purchases"}) // Dodaj ovo
-@EqualsAndHashCode(exclude = {"twoFactorAuth", "purchases"}) // I ovo za equals/hashCode
+@ToString(exclude = {"twoFactorAuth", "purchases"})
+@EqualsAndHashCode(exclude = {"twoFactorAuth", "purchases"})
 public class User {
 
     @Id
@@ -25,6 +27,7 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Column(nullable = false)
@@ -33,6 +36,7 @@ public class User {
     @Column(nullable = false)
     private Boolean enabled = true;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<User2FA> twoFactorAuth;
 
