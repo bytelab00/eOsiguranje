@@ -44,7 +44,7 @@ public class Transaction {
     private Long providerId;
 
     @Column(nullable = false)
-    private String status; // Add this field
+    private String status;
 
     @PrePersist
     protected void onCreate() {

@@ -12,6 +12,6 @@ public class UpdateUserRequest {
     private String email;
     private String role;
     private Boolean enabled = true;
-    // Password je opciono - ako je null, ne mijenjamo ga
+
     private String password;
 }

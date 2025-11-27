@@ -128,7 +128,6 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    // Helper metoda za konverziju
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())

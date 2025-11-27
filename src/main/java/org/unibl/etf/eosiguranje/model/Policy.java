@@ -1,9 +1,12 @@
 package org.unibl.etf.eosiguranje.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "policies")
@@ -27,4 +30,8 @@ public class Policy {
 
     @Column(nullable = false)
     private BigDecimal price;
+
+    @OneToMany(mappedBy = "policy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<UserPolicy> userPolicies = new ArrayList<>();
 }

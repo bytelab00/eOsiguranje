@@ -26,7 +26,7 @@ public class AdminUserController {
         this.userService = userService;
     }
 
-    // GET /api/admin/users - Lista svih korisnika
+
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         try {
@@ -37,7 +37,7 @@ public class AdminUserController {
         }
     }
 
-    // GET /api/admin/users/{id} - Detalji jednog korisnika
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
@@ -56,7 +56,7 @@ public class AdminUserController {
         }
     }
 
-    // POST /api/admin/users - Kreiranje novog korisnika
+
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody CreateUserRequest request) {
         try {
@@ -73,7 +73,7 @@ public class AdminUserController {
         }
     }
 
-    // PUT /api/admin/users/{id} - Ažuriranje korisnika
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
         try {
@@ -90,7 +90,7 @@ public class AdminUserController {
         }
     }
 
-    // DELETE /api/admin/users/{id} - Brisanje korisnika
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {

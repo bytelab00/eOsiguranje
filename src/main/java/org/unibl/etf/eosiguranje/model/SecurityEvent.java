@@ -1,5 +1,6 @@
 package org.unibl.etf.eosiguranje.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ public class SecurityEvent {
 
     @ManyToOne
     @JoinColumn(name="user_id")
+    @JsonIgnore
     private User user; // can be null for anonymous events
 
     @Column(nullable = false)
